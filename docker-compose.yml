@@ -1,0 +1,16 @@
+services:
+  teslalocator:
+    build: .
+    container_name: teslalocator
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      # Persist config (Tesla credentials/tokens) across container restarts
+      - ./data/config.json:/app/server/config.json
+      # Persist EC key pair (required by Tesla Fleet API)
+      - ./data/keys:/app/server/keys
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - CORS_ORIGIN=*
