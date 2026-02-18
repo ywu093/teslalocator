@@ -158,9 +158,9 @@ export const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
                   developer.tesla.com
                 </a>
                 <br />
-                2. Enter your DDNS or public domain below (must have HTTPS and port forwarding configured)
+                2. Enter your ngrok static domain below (ngrok runs as a container alongside the app)
                 <br />
-                3. Use your domain as the Allowed Origin, Redirect URI, and Returned URL on Tesla Developer
+                3. Use your ngrok domain as the Allowed Origin, Redirect URI, and Returned URL on Tesla Developer
               </p>
             ) : (
               <p className="text-xs text-gray-500 mb-2">
@@ -197,7 +197,7 @@ export const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             <input
               type="text"
               placeholder={deployMode === 'docker'
-                ? 'Your domain (e.g. mynas.myqnapcloud.com)'
+                ? 'ngrok static domain (e.g. abc123.ngrok-free.dev)'
                 : 'ngrok domain (e.g. abc123.ngrok-free.app)'
               }
               value={domain}

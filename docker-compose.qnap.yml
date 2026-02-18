@@ -13,5 +13,17 @@ services:
       - PORT=3001
       - CORS_ORIGIN=*
 
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: teslalocator-ngrok
+    restart: unless-stopped
+    # Replace YOUR_NGROK_DOMAIN with your static ngrok domain (e.g. abc123.ngrok-free.dev)
+    command: http teslalocator:3001 --domain=YOUR_NGROK_DOMAIN
+    environment:
+      # Replace with your ngrok auth token from https://dashboard.ngrok.com/get-started/your-authtoken
+      - NGROK_AUTHTOKEN=YOUR_NGROK_AUTHTOKEN
+    depends_on:
+      - teslalocator
+
 volumes:
   teslalocator-data:
