@@ -75,9 +75,14 @@ export const getAuthUrl = (req: Request, res: Response) => {
 export const handleCallback = async (req: Request, res: Response) => {
   const { code, state, error: authError } = req.query;
 
+  // Build frontend URL from the request itself (works behind ngrok, reverse proxy, or direct access)
+  const config = configService.getConfig();
+  const domain = config.tesla.domain;
+  const frontendUrl = domain
+    ? `https://${domain}`
+    : `${req.protocol}://${req.get('host')}`;
+
   if (authError) {
-    // Redirect to frontend with error
-    const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:5173';
     return res.redirect(`${frontendUrl}?auth_error=${encodeURIComponent(String(authError))}`);
   }
 
@@ -86,19 +91,14 @@ export const handleCallback = async (req: Request, res: Response) => {
   }
 
   try {
-    const config = configService.getConfig();
-    const domain = config.tesla.domain;
     const redirectUri = domain
       ? `https://${domain}/api/auth/tesla/callback`
       : `${req.protocol}://${req.get('host')}/api/auth/tesla/callback`;
     await teslaService.exchangeCode(String(code), redirectUri);
 
-    // Redirect to frontend with success
-    const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:5173';
     res.redirect(`${frontendUrl}?auth_success=true`);
   } catch (error: any) {
     console.error('Error in OAuth callback:', error);
-    const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:5173';
     res.redirect(`${frontendUrl}?auth_error=${encodeURIComponent(error.message)}`);
   }
 };
