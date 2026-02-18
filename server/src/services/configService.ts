@@ -13,7 +13,7 @@ interface Config {
 }
 
 class ConfigService {
-  private configPath = path.join(__dirname, '../../config.json');
+  private configPath = process.env.CONFIG_PATH || path.join(__dirname, '../../config.json');
 
   getConfig(): Config {
     // Try config.json first, fallback to .env

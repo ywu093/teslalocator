@@ -1,14 +1,17 @@
 services:
   teslalocator:
-    build: .
+    image: ghcr.io/ywu093/teslalocator:latest
     container_name: teslalocator
     restart: unless-stopped
     ports:
       - "3001:3001"
     volumes:
-      # Persist config and keys across container restarts
-      - ./data:/app/data
+      # Persist Tesla config and EC keys across container restarts
+      - teslalocator-data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=3001
       - CORS_ORIGIN=*
+
+volumes:
+  teslalocator-data:

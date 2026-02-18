@@ -41,17 +41,17 @@ COPY --from=builder /app/server/dist/ server/dist/
 # Copy built client (served by Express as static files)
 COPY --from=builder /app/client/dist/ client/dist/
 
-# Copy key pair directory if needed at runtime (or generate on start)
-# The server generates keys on startup via keyService.ensureKeyPair()
-
-# Create directory for persistent config
-RUN mkdir -p /app/server/keys
+# Create directories for persistent data
+RUN mkdir -p /app/data/keys
 
 EXPOSE 3001
 
 # Set production defaults
+# CONFIG_PATH and KEYS_DIR point to /app/data so volumes persist across restarts
 ENV NODE_ENV=production
 ENV PORT=3001
 ENV CORS_ORIGIN=*
+ENV CONFIG_PATH=/app/data/config.json
+ENV KEYS_DIR=/app/data/keys
 
 CMD ["node", "server/dist/index.js"]

@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
-const KEYS_DIR = path.join(__dirname, '../../keys');
+const KEYS_DIR = process.env.KEYS_DIR || path.join(__dirname, '../../keys');
 const PRIVATE_KEY_PATH = path.join(KEYS_DIR, 'private-key.pem');
 const PUBLIC_KEY_PATH = path.join(KEYS_DIR, 'public-key.pem');
 
