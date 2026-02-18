@@ -7,7 +7,10 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
+type DeployMode = 'docker' | 'local';
+
 export const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
+  const [deployMode, setDeployMode] = useState<DeployMode>('docker');
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [domain, setDomain] = useState('');
@@ -44,7 +47,7 @@ export const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
       return;
     }
     if (!domain) {
-      setMessage('Error: Domain is required. Run ngrok and enter your ngrok domain.');
+      setMessage('Error: Domain is required for Tesla OAuth redirect.');
       return;
     }
 
@@ -68,7 +71,6 @@ export const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
 
     try {
       const { authUrl } = await api.getAuthUrl();
-      // Open Tesla's authorization page - user will be redirected back after login
       window.location.href = authUrl;
     } catch (error: any) {
       setMessage(`Error: ${error.response?.data?.error || error.message}`);
@@ -114,26 +116,70 @@ export const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             </div>
           )}
 
+          {/* Deployment Mode Toggle */}
+          <div className="mb-3 flex rounded border border-gray-300 overflow-hidden">
+            <button
+              onClick={() => setDeployMode('docker')}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                deployMode === 'docker'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Docker / Server
+            </button>
+            <button
+              onClick={() => setDeployMode('local')}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                deployMode === 'local'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Local Dev (ngrok)
+            </button>
+          </div>
+
           {/* Step 1: Fleet API Credentials */}
           <div className="mb-3 p-3 bg-gray-50 rounded border border-gray-200">
             <p className="text-sm font-medium text-gray-700 mb-2">
               Step 1: Enter Fleet API Credentials
             </p>
-            <p className="text-xs text-gray-500 mb-2">
-              1. Register a free app at{' '}
-              <a
-                href="https://developer.tesla.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                developer.tesla.com
-              </a>
-              <br />
-              2. Run <code className="bg-gray-200 px-1 rounded">ngrok http 3001</code> to get a public domain
-              <br />
-              3. Use your ngrok URL as the Allowed Origin, Redirect URI, and Returned URL on Tesla Developer
-            </p>
+
+            {deployMode === 'docker' ? (
+              <p className="text-xs text-gray-500 mb-2">
+                1. Register a free app at{' '}
+                <a
+                  href="https://developer.tesla.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  developer.tesla.com
+                </a>
+                <br />
+                2. Enter your DDNS or public domain below (must have HTTPS and port forwarding configured)
+                <br />
+                3. Use your domain as the Allowed Origin, Redirect URI, and Returned URL on Tesla Developer
+              </p>
+            ) : (
+              <p className="text-xs text-gray-500 mb-2">
+                1. Register a free app at{' '}
+                <a
+                  href="https://developer.tesla.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  developer.tesla.com
+                </a>
+                <br />
+                2. Run <code className="bg-gray-200 px-1 rounded">ngrok http 3001</code> to get a public domain
+                <br />
+                3. Use your ngrok URL as the Allowed Origin, Redirect URI, and Returned URL on Tesla Developer
+              </p>
+            )}
+
             <input
               type="text"
               placeholder="Client ID"
@@ -150,7 +196,10 @@ export const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
             />
             <input
               type="text"
-              placeholder="ngrok domain (e.g. abc123.ngrok-free.app)"
+              placeholder={deployMode === 'docker'
+                ? 'Your domain (e.g. mynas.myqnapcloud.com)'
+                : 'ngrok domain (e.g. abc123.ngrok-free.app)'
+              }
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
