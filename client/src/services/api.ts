@@ -13,7 +13,19 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Send session cookie with every request
 });
+
+// Redirect to login page on 401
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const api = {
   async getVehicles(): Promise<VehiclesResponse> {

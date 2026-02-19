@@ -12,3 +12,7 @@ services:
       - NODE_ENV=production
       - PORT=3001
       - CORS_ORIGIN=*
+      # Set a strong password to protect the app from public access
+      - APP_PASSWORD=change-me-to-a-strong-password
+      # Set a random secret for session encryption (generate with: openssl rand -hex 32)
+      - SESSION_SECRET=change-me-to-a-random-secret
