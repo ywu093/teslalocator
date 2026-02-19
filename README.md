@@ -10,14 +10,17 @@ A responsive web application to track the real-time location of your Tesla vehic
 - **Vehicle Selection & Auto-Follow** - Click a vehicle to select and auto-follow its location on the map; click again to deselect
 - **Reverse Geocoding** - Shows the nearest street address for each vehicle using Google Maps Geocoder
 - **GPS Coordinates** - Displays latitude/longitude for each vehicle in the sidebar
+- **Speed Display** - Shows current speed in km/h
 - **Custom Tesla Vehicle Icons** - SVG markers with Tesla logo, color-coded by vehicle state (green=online, gray=asleep/offline), rotated by heading
-- **Web-Based Settings** - Configure Tesla Fleet API credentials, Google Maps API key, and polling interval through the UI (no manual `.env` editing required)
-- **Tesla Fleet API (OAuth 2.0)** - Secure authentication using OAuth 2.0 with PKCE flow via Tesla's official Fleet API
+- **Web-Based Settings** - Configure Tesla Fleet API credentials, Google Maps API key, and polling interval through the UI — no manual file editing required
+- **Deploy Mode Toggle** - Settings UI switches between Docker/Server mode (ngrok container) and Local Dev mode (standalone ngrok)
+- **Tesla Fleet API (OAuth 2.0)** - Secure authentication using OAuth 2.0 with PKCE via Tesla's official Fleet API
 - **EC Key Pair Management** - Auto-generates and serves the required EC key pair for Tesla Fleet API registration
+- **Password Protection** - Optional login page protects the app from public access when deployed to the internet
 - **Responsive Design** - Optimized layout for mobile (bottom sheet), tablet (overlay sidebar), and desktop (fixed sidebar)
 - **Smart Polling** - Only actively polls online vehicles; uses longer cache times for asleep/offline vehicles to avoid battery drain
-- **Production-Ready** - Express serves the built frontend in production; works behind ngrok or reverse proxies
-- **Docker Support** - Dockerfile and docker-compose.yml for containerized deployment (e.g., QNAP Container Station)
+- **Production-Ready** - Express serves the built frontend; works behind ngrok or reverse proxies
+- **Docker Support** - Dockerfile and docker-compose files for containerized 24/7 deployment on QNAP NAS or any Docker host
 
 ## Tech Stack
 
@@ -25,7 +28,7 @@ A responsive web application to track the real-time location of your Tesla vehic
 - **Backend**: Node.js + Express + TypeScript
 - **Maps**: Google Maps JavaScript API (`@react-google-maps/api`)
 - **Data Fetching**: React Query (`@tanstack/react-query`) with automatic polling
-- **API**: Tesla Fleet API (OAuth 2.0 + PKCE)
+- **Auth**: Tesla Fleet API OAuth 2.0 + PKCE, `express-session` for app login
 - **HTTP Client**: Axios
 
 ## Project Structure
@@ -37,20 +40,20 @@ teslalocator/
 │   │   ├── components/
 │   │   │   ├── App.tsx              # Main app layout with vehicle tracking
 │   │   │   ├── Layout/
-│   │   │   │   └── Header.tsx       # App header with settings button
+│   │   │   │   └── Header.tsx       # App header with settings & logout buttons
 │   │   │   ├── Map/
 │   │   │   │   ├── VehicleMap.tsx    # Google Maps with auto-follow
 │   │   │   │   └── VehicleMarker.tsx # Custom Tesla SVG markers
 │   │   │   ├── Settings/
 │   │   │   │   └── SettingsModal.tsx # Fleet API, Maps key, polling config
 │   │   │   └── VehicleList/
-│   │   │       └── VehicleList.tsx   # Sidebar with address & GPS info
+│   │   │       └── VehicleList.tsx   # Sidebar with address, GPS & speed info
 │   │   ├── hooks/
 │   │   │   ├── useVehicles.ts       # Fetch vehicle list
 │   │   │   ├── useVehicleLocation.ts # Poll vehicle locations
 │   │   │   └── useReverseGeocode.ts # Address lookup from coordinates
 │   │   ├── services/
-│   │   │   ├── api.ts               # Axios API client
+│   │   │   ├── api.ts               # Axios API client with session handling
 │   │   │   └── configService.ts     # localStorage settings manager
 │   │   └── types/
 │   │       └── vehicle.ts           # TypeScript interfaces
@@ -59,24 +62,29 @@ teslalocator/
 ├── server/                          # Node.js backend
 │   ├── src/
 │   │   ├── controllers/
-│   │   │   ├── vehicleController.ts # Vehicle request handlers
+│   │   │   ├── vehicleController.ts  # Vehicle request handlers
 │   │   │   └── settingsController.ts # Settings & OAuth callback handlers
 │   │   ├── routes/
-│   │   │   ├── vehicles.ts          # Vehicle API routes
-│   │   │   └── settings.ts          # Settings API routes
+│   │   │   ├── vehicles.ts           # Vehicle API routes
+│   │   │   ├── settings.ts           # Settings API routes
+│   │   │   └── auth.ts               # Login page, login POST, logout routes
 │   │   ├── services/
-│   │   │   ├── teslaService.ts      # Tesla Fleet API integration
-│   │   │   ├── configService.ts     # Server config (config.json) manager
-│   │   │   └── keyService.ts        # EC key pair generation & management
+│   │   │   ├── teslaService.ts       # Tesla Fleet API integration
+│   │   │   ├── configService.ts      # Server config (config.json) manager
+│   │   │   └── keyService.ts         # EC key pair generation & management
 │   │   ├── middleware/
-│   │   │   └── errorHandler.ts      # Express error handling
-│   │   └── index.ts                 # Express server + static file serving
+│   │   │   ├── auth.ts               # Session-based auth gate middleware
+│   │   │   └── errorHandler.ts       # Express error handling
+│   │   └── index.ts                  # Express server entry point
 │   ├── config.json.example
 │   └── package.json
-├── Dockerfile                       # Multi-stage Docker build
-├── docker-compose.yml               # Container deployment config
+├── Dockerfile                        # Multi-stage Docker build
+├── docker-compose.yml                # Local/self-hosted deployment
+├── docker-compose.qnap.yml           # QNAP Container Station deployment
+├── .github/workflows/
+│   └── docker-publish.yml            # Auto-build & push image to GHCR on push
 ├── .dockerignore
-└── package.json                     # Workspace configuration
+└── package.json                      # Workspace configuration
 ```
 
 ## Prerequisites
@@ -85,9 +93,10 @@ teslalocator/
 - npm (v9 or higher)
 - Tesla account with vehicles
 - Tesla Developer account ([developer.tesla.com](https://developer.tesla.com))
+- ngrok account with a static domain ([ngrok.com](https://ngrok.com)) — required for Tesla OAuth
 - Google Maps API key with Maps JavaScript API enabled ([Get one here](https://developers.google.com/maps/documentation/javascript/get-api-key))
 
-## Setup Instructions
+## Local Development Setup
 
 ### 1. Install Dependencies
 
@@ -107,28 +116,23 @@ This starts:
 
 ### 3. Configure via Settings UI
 
-Open http://localhost:5173 and click the gear icon in the header to open Settings:
+Open http://localhost:5173 and click the gear icon in the header to open Settings.
 
-1. **Tesla Fleet API** — Enter your Client ID, Client Secret, and domain from [developer.tesla.com](https://developer.tesla.com), then click "Sign in with Tesla" to authorize via OAuth
+Select **Local Dev (ngrok)** mode and follow the steps:
+
+1. **Tesla Fleet API** — Enter your Client ID, Client Secret, and ngrok domain, then click "Sign in with Tesla"
 2. **Google Maps API Key** — Enter your API key (stored in browser localStorage)
 3. **Polling Interval** — Set how often to poll locations in milliseconds (default: 10000)
 
-### Alternative: Environment Variables
+### 4. Run ngrok for Tesla OAuth
 
-You can also configure via `.env` files (used as fallback if no config.json exists):
+Tesla requires a publicly accessible HTTPS URL for OAuth callbacks. Run ngrok pointing at the backend:
 
-**server/.env:**
-```env
-PORT=3001
-CORS_ORIGIN=http://localhost:5173
+```bash
+ngrok http --domain=your-domain.ngrok-free.dev 3001
 ```
 
-**client/.env:**
-```env
-VITE_API_URL=http://localhost:3001
-VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
-VITE_POLLING_INTERVAL=10000
-```
+Enter this domain in the Settings UI under "Local Dev (ngrok)" mode.
 
 ## Development Scripts
 
@@ -151,45 +155,95 @@ VITE_POLLING_INTERVAL=10000
 | `GET` | `/api/settings/status` | Check configuration status |
 | `POST` | `/api/settings/fleet-config` | Save Fleet API credentials |
 | `GET` | `/api/settings/auth-url` | Get Tesla OAuth authorization URL |
-| `GET` | `/api/auth/tesla/callback` | Tesla OAuth callback handler |
-| `GET` | `/.well-known/appspecific/com.tesla.3p.public-key.pem` | Tesla-required public key |
-| `GET` | `/health` | Health check |
+| `GET` | `/api/auth/tesla/callback` | Tesla OAuth callback handler (always public) |
+| `GET` | `/.well-known/appspecific/com.tesla.3p.public-key.pem` | Tesla-required public key (always public) |
+| `GET` | `/login` | Login page |
+| `POST` | `/api/login` | Authenticate with app password |
+| `POST` | `/api/logout` | End session |
+| `GET` | `/health` | Health check (always public) |
 
-## Internet Access (ngrok)
+## QNAP Container Station Deployment
 
-To access the app from the internet (also required for Tesla OAuth callback):
+The app is built and published automatically to GitHub Container Registry on every push to `main`. No SSH or git clone needed on the QNAP.
 
-1. Install [ngrok](https://ngrok.com/) and set up a static domain
-2. Run: `ngrok http --domain=your-domain.ngrok-free.dev 3001`
-3. Build the frontend: `npm run build:client`
-4. The Express server serves the built frontend at port 3001 with relative API URLs
-5. Enter your ngrok domain in the Settings modal
+### Step 1: Wait for the Docker image to build
 
-## Docker Deployment (QNAP / NAS)
+Go to `https://github.com/ywu093/teslalocator/actions` and confirm the latest workflow completed (green checkmark). The image is published at `ghcr.io/ywu093/teslalocator:latest`.
 
-A `Dockerfile` and `docker-compose.yml` are included for containerized deployment:
+> If the repository is private, go to `https://github.com/ywu093?tab=packages`, click the package, then **Package settings > Change visibility > Public**.
 
-```bash
-# Build and run
-docker compose up -d --build
+### Step 2: Create the application in Container Station
+
+1. Open **Container Station** on your QNAP
+2. Go to **Application > Create**
+3. Paste the contents of `docker-compose.qnap.yml`, replacing the placeholder values:
+
+```yaml
+services:
+  teslalocator:
+    image: ghcr.io/ywu093/teslalocator:latest
+    container_name: teslalocator
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - teslalocator-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - CORS_ORIGIN=*
+      - APP_PASSWORD=your-strong-password-here
+      - SESSION_SECRET=your-random-secret-here
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: teslalocator-ngrok
+    restart: unless-stopped
+    command: http teslalocator:3001 --domain=your-domain.ngrok-free.dev
+    environment:
+      - NGROK_AUTHTOKEN=your-ngrok-auth-token
+    depends_on:
+      - teslalocator
+
+volumes:
+  teslalocator-data:
 ```
 
-The container:
-- Exposes port 3001
-- Persists Tesla credentials/tokens via volume mount (`data/config.json`)
-- Persists EC key pair via volume mount (`data/keys/`)
-- Auto-restarts on failure
+Replace:
+- `your-strong-password-here` — password to log in to the app
+- `your-random-secret-here` — random string for session encryption (generate with `openssl rand -hex 32`)
+- `your-domain.ngrok-free.dev` — your ngrok static domain
+- `your-ngrok-auth-token` — from [dashboard.ngrok.com](https://dashboard.ngrok.com/get-started/your-authtoken)
 
-See `docker-compose.yml` for volume mount configuration.
+4. Click **Create**
+
+### Step 3: Open the app
+
+Go to `https://your-domain.ngrok-free.dev` and log in with the password you set.
+
+On first use, open Settings, select **Docker / Server** mode, and enter your Tesla Fleet API credentials using your ngrok static domain.
+
+### Updating
+
+Push code to `main` → GitHub Actions rebuilds the image → In Container Station, click **Recreate** to pull the latest.
+
+## Password Protection
+
+When `APP_PASSWORD` is set, the app requires a password to access:
+
+- Visiting the app redirects to a login page
+- After login, a session cookie is stored (valid for 7 days)
+- Click the logout button (→ icon) in the header to sign out
+- The Tesla OAuth callback and public key endpoint are always public (required by Tesla's servers)
+- If `APP_PASSWORD` is not set, the app is open — suitable for local development
 
 ## Features in Detail
 
 ### Vehicle Selection & Auto-Follow
 
-- Click a vehicle in the sidebar to select it — the map zooms in and follows the vehicle
+- Click a vehicle in the sidebar to select it — the map zooms in and follows the vehicle as it moves
 - Click again to deselect — the map stops following
 - Selected vehicles show a "Tracking" label in the sidebar
-- The map pans automatically as the vehicle's location updates
 
 ### Reverse Geocoded Addresses
 
@@ -201,7 +255,7 @@ Vehicles are displayed with custom SVG markers featuring:
 - Tesla logo overlay
 - Color-coded glow: green (online), gray (asleep/offline)
 - Heading-based rotation
-- InfoWindow on click showing status, speed, GPS, and last update time
+- InfoWindow on click showing status, speed (km/h), GPS, and last update time
 
 ### Smart Polling Strategy
 
@@ -211,7 +265,7 @@ Vehicles are displayed with custom SVG markers featuring:
 
 ### Settings Persistence
 
-- **Server-side** (`config.json`): Tesla Fleet API credentials, OAuth tokens — persists across restarts
+- **Server-side** (`config.json` / Docker volume): Tesla Fleet API credentials, OAuth tokens — persists across restarts
 - **Client-side** (localStorage): Google Maps API key, polling interval — per-browser
 - **Fallback**: `.env` files are used if `config.json` doesn't exist
 
@@ -223,11 +277,16 @@ Vehicles are displayed with custom SVG markers featuring:
 
 ## Troubleshooting
 
+### Redirected to login page unexpectedly
+
+- Your session may have expired (7-day limit) — log in again
+- Check that `SESSION_SECRET` is set consistently and hasn't changed between container restarts
+
 ### "Error loading vehicles"
 
 - Open Settings and verify your Tesla Fleet API credentials
 - Ensure you've completed the OAuth flow ("Sign in with Tesla")
-- Check that your ngrok tunnel is running if using a custom domain
+- Check that the ngrok tunnel is running
 
 ### "Google Maps API key not configured"
 
@@ -245,13 +304,18 @@ Vehicles are displayed with custom SVG markers featuring:
 - The Google Maps JavaScript API must be loaded before reverse geocoding works
 - The hook retries automatically after 3 seconds if Maps JS isn't ready yet
 
+### Tesla OAuth error: "Domain is not valid"
+
+- DDNS domains (e.g. `*.myqnapcloud.com`) are rejected by Tesla Developer portal
+- Use an ngrok static domain instead — Tesla accepts these
+
 ## Security Notes
 
-- Tesla credentials and OAuth tokens are stored in `server/config.json` (gitignored)
+- `APP_PASSWORD` and `SESSION_SECRET` should be set via environment variables, not hardcoded
+- Tesla credentials and OAuth tokens are stored in `server/config.json` (gitignored) or Docker volume
 - Google Maps API key is stored in browser localStorage
+- EC private keys in `server/keys/` are gitignored
 - Never commit `.env` or `config.json` to version control
-- EC private keys in `server/keys/` are also gitignored
-- No authentication on the web UI — intended for personal/private network use
 
 ## Limitations
 
