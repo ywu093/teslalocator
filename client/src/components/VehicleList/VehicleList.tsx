@@ -71,7 +71,7 @@ const VehicleItem = ({
             {location.location.speed !== null && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">Speed:</span>
-                <span className="text-gray-800">{Math.round(location.location.speed)} km/h</span>
+                <span className="text-gray-800">{Math.round(location.location.speed * 1.60934)} km/h</span>
               </div>
             )}
 
